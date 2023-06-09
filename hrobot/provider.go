@@ -1,7 +1,7 @@
 package hrobot
 
 import (
-	"os"
+	"errors"
 
 	"github.com/floshodan/hrobot-go/hrobot"
 	"github.com/floshodan/terraform-provider-hrobot/internal/boot"
@@ -13,6 +13,21 @@ import (
 
 func Provider() *schema.Provider {
 	return &schema.Provider{
+		Schema: map[string]*schema.Schema{
+			"token": {
+				Type:        schema.TypeString,
+				Required:    true,
+				DefaultFunc: schema.EnvDefaultFunc("HROBOT_TOKEN", nil),
+				Description: "The API token to access the Hetzner Robot Interface. Has the following Format: username:password ",
+				ValidateFunc: func(val interface{}, key string) (warns []string, errs []error) {
+					token := val.(string)
+					if token == "" {
+						errs = append(errs, errors.New("entered token is invalid"))
+					}
+					return
+				},
+				Sensitive: true,
+			}},
 		ResourcesMap: map[string]*schema.Resource{
 			//"hrobot_server_list": server.ResourceEvent(),
 			//server.ResourceType: server.Resource(),
@@ -35,8 +50,11 @@ func Provider() *schema.Provider {
 }
 func providerConfigure(d *schema.ResourceData) (interface{}, error) {
 	// TODO
+	opts := []hrobot.ClientOption{
+		hrobot.WithToken(d.Get("token").(string)),
+	}
+
 	//username := d.Get("username").(string)
 	//password := d.Get("password").(string)
-	client := hrobot.NewClient(hrobot.WithToken(os.Getenv("HROBOT_TOKEN")))
-	return client, nil
+	return hrobot.NewClient(opts...), nil
 }
